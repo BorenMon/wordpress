@@ -1,14 +1,16 @@
 services:
   db:
-    image: mysql:8.0
+    image: mariadb:10.5
     container_name: db
     restart: unless-stopped
     env_file: .env
     environment:
-      - MYSQL_DATABASE=wordpress
+      - MARIADB_DATABASE=wordpress
+      - MARIADB_USER=$DB_USER
+      - MARIADB_PASSWORD=$DB_PASSWORD
+      - MARIADB_ROOT_PASSWORD=$DB_ROOT_PASSWORD
     volumes:
       - dbdata:/var/lib/mysql
-    command: '--default-authentication-plugin=mysql_native_password'
     networks:
       - app-network
 
@@ -21,8 +23,8 @@ services:
     env_file: .env
     environment:
       - WORDPRESS_DB_HOST=db:3306
-      - WORDPRESS_DB_USER=$MYSQL_USER
-      - WORDPRESS_DB_PASSWORD=$MYSQL_PASSWORD
+      - WORDPRESS_DB_USER=$DB_USER
+      - WORDPRESS_DB_PASSWORD=$DB_PASSWORD
       - WORDPRESS_DB_NAME=wordpress
     volumes:
       - wordpress:/var/www/html
@@ -40,22 +42,24 @@ services:
     volumes:
       - wordpress:/var/www/html
       - ./nginx-conf:/etc/nginx/conf.d
-      - certbot-etc:/etc/letsencrypt
     networks:
       - app-network
 
-  certbot:
+  phpmyadmin:
     depends_on:
-      - webserver
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-      - certbot-etc:/etc/letsencrypt
-      - wordpress:/var/www/html
-    command: certonly --webroot --webroot-path=/var/www/html --email borenmon5@gmail.com --agree-tos --no-eff-email --staging -d boren-do-v1.online -d www.boren-do-v1.online
+      - db
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=db
+      - MYSQL_ROOT_PASSWORD=$DB_ROOT_PASSWORD
+    networks:
+      - app-network
 
 volumes:
-  certbot-etc:
   wordpress:
   dbdata:
 
